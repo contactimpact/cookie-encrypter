@@ -123,7 +123,7 @@ function JSONCookie(str) {
  */
 function cookieEncrypter(secret, _options) {
   const defaultOptions = {
-    algorithm: 'aes256',
+    algorithm: defaultAlgorithm,
     key: secret,
   };
 
