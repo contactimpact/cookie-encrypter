@@ -7,6 +7,15 @@ module.exports = cookieEncrypter;
 module.exports.encryptCookie = encryptCookie;
 module.exports.decryptCookie = decryptCookie;
 
+var randomCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+function randomChars( n ) {
+  var chars = [];
+  for (var i = 0; i < n; i++) {
+    chars.push(randomCharset.charAt(Math.floor(Math.random() * randomCharset.length)));
+  }
+  return chars.join('');
+}
+
 /**
  * Encrypt cookie string
  *
@@ -17,17 +26,6 @@ module.exports.decryptCookie = decryptCookie;
  *
  * @return {String}
  */
-
-var randomCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-
-function randomChars( n ) {
-  var chars = [];
-  for (var i = 0; i < n; i++) {
-    chars.push(randomCharset.charAt(Math.floor(Math.random() * randomCharset.length)));
-  }
-  return chars.join('');
-}
 
 function encryptCookie(str, options) {
   if (!options.key) {
