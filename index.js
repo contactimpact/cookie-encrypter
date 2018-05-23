@@ -1,6 +1,7 @@
 var crypto = require('crypto');
 var util = require('util');
 var defaultAlgorithm = 'aes256';
+var defaultCharset = 'base64';
 
 module.exports = cookieEncrypter;
 module.exports.encryptCookie = encryptCookie;
@@ -16,24 +17,57 @@ module.exports.decryptCookie = decryptCookie;
  *
  * @return {String}
  */
+
+var randomCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+
+function randomChars( n ) {
+  var chars = [];
+  for (var i = 0; i < n; i++) {
+    chars.push(randomCharset.charAt(Math.floor(Math.random() * randomCharset.length)));
+  }
+  return chars.join('');
+}
+
 function encryptCookie(str, options) {
   if (!options.key) {
     throw new TypeError('options.key argument is required to encryptCookie');
   }
 
-  var iv = crypto.randomBytes(16);
+  var staticIV = !!options.useStaticIV;
+
+  // use static IV ... this is a bad idea, but since we only encrypt cookies and
+  // we need to save bandwidth, this security tradeoff is ok.
+  var iv = staticIV?'0000000000000000':crypto.randomBytes(16);
+
+  if( staticIV ) {
+    // add some randomness
+    str = randomChars(4)+str;
+  }
+
+
   var cipher = crypto.createCipheriv(
     options.algorithm || defaultAlgorithm,
     options.key,
     iv
   );
-  var encrypted =
-    iv.toString('hex') +
-    ':' +
-    cipher.update(str, 'utf8', 'hex') +
-    cipher.final('hex');
 
-  return encrypted;
+  var charset = options.charset || defaultCharset;
+
+  if( staticIV ) {
+    var encrypted =
+      cipher.update(str, 'utf8', charset) +
+      cipher.final(charset);
+    return encrypted;
+  } else {
+    var encrypted =
+      iv.toString(charset) +
+      ':' +
+      cipher.update(str, 'utf8', charset) +
+      cipher.final(charset);
+    return encrypted;
+  }
+
 }
 
 /**
@@ -47,16 +81,32 @@ function encryptCookie(str, options) {
  * @return {String}
  */
 function decryptCookie(str, options) {
+  var charset = options.charset || defaultCharset;
   var encryptedArray = str.split(':');
-  var iv = new Buffer(encryptedArray[0], 'hex');
-  var encrypted = new Buffer(encryptedArray[1], 'hex');
+  var iv = null;
+  var encrypted = '';
+  var staticIV = false;
+  if( encryptedArray.length === 1 ) {
+    // staticIV was used in encryption, generally a bad idea, but
+    // cookie information is not very sensitive
+    iv = '0000000000000000';
+    encrypted = new Buffer(encryptedArray[0], charset);
+    staticIV = true;
+  } else {
+    iv = new Buffer(encryptedArray[0], charset);
+    encrypted = new Buffer(encryptedArray[1], charset);
+  }
   var decipher = crypto.createDecipheriv(
     options.algorithm || defaultAlgorithm,
     options.key,
     iv
   );
-  var decrypted = decipher.update(encrypted, 'hex', 'utf8') + decipher.final('utf8');
 
+  var decrypted = decipher.update(encrypted, charset, 'utf8') + decipher.final('utf8');
+
+  if( staticIV ) {
+    decrypted  = decrypted.substr(4);
+  }
   return decrypted;
 }
 
