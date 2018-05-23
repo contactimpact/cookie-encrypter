@@ -185,8 +185,11 @@ function cookieEncrypter(secret, _options) {
     var originalResCookie = res.cookie;
 
     res.cookie = function (name, value, opt) {
-      if (typeof opt === 'object' && opt.plain) {
-        return originalResCookie.call(res, name, value, opt);
+      if (typeof opt === 'object' ) {
+        if ( ( options.encryptByDefault && opt.plain) ||
+             (!options.encryptByDefault && !opt.encrypted ) ) {
+          return originalResCookie.call(res, name, value, opt);
+        }
       }
 
       var val = typeof value === 'object'
